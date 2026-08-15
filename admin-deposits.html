@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+<meta charset="UTF-8">
+
+<meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+>
+
+<title>Admin Deposits - Money Earn Ethiopia</title>
+
+<link
+    rel="stylesheet"
+    href="css/style.css"
+>
+
+<style>
+
+/* =========================
+   BODY
+========================= */
+
+body{
+    margin:0;
+    background:#f5f5f5;
+    font-family:Arial,sans-serif;
+}
+
+
+/* =========================
+   HEADER
+========================= */
+
+header{
+    background:#087dcc;
+    color:white;
+    text-align:center;
+    padding:22px 10px;
+}
+
+header h1{
+    margin:0;
+    font-size:27px;
+}
+
+header p{
+    margin:8px 0 0;
+}
+
+
+/* =========================
+   MAIN
+========================= */
+
+.hero{
+    width:92%;
+    max-width:900px;
+    margin:25px auto;
+}
+
+
+/* =========================
+   CARD
+========================= */
+
+.card{
+    background:white;
+    border-radius:15px;
+    padding:20px;
+    margin-bottom:20px;
+    box-shadow:0 3px 10px rgba(0,0,0,.10);
+}
+
+.card h2{
+    text-align:center;
+    margin-top:0;
+}
+
+
+/* =========================
+   DEPOSIT LIST
+========================= */
+
+#depositList{
+    margin-top:20px;
+}
+
+
+/* =========================
+   DEPOSIT REQUEST CARD
+========================= */
+
+.deposit-card{
+    background:#f8f8f8;
+    border:1px solid #e5e5e5;
+    border-radius:12px;
+    padding:15px;
+    margin-bottom:15px;
+}
+
+.deposit-card h3{
+    margin-top:0;
+    margin-bottom:12px;
+}
+
+.deposit-card p{
+    margin:7px 0;
+    word-break:break-word;
+}
+
+
+/* =========================
+   BUTTONS
+========================= */
+
+.buttons{
+    display:flex;
+    gap:10px;
+    margin-top:15px;
+}
+
+.approve-btn,
+.reject-btn{
+    flex:1;
+    border:none;
+    padding:12px;
+    border-radius:8px;
+    color:white;
+    font-size:15px;
+    font-weight:bold;
+    cursor:pointer;
+}
+
+.approve-btn{
+    background:#08a66a;
+}
+
+.reject-btn{
+    background:#d62828;
+}
+
+.approve-btn:hover,
+.reject-btn:hover{
+    opacity:.9;
+}
+
+
+/* =========================
+   BACK BUTTON
+========================= */
+
+.back-btn{
+    display:block;
+    width:100%;
+    box-sizing:border-box;
+    text-align:center;
+    text-decoration:none;
+    background:#087dcc;
+    color:white;
+    padding:14px;
+    border-radius:10px;
+    font-weight:bold;
+    margin-top:15px;
+}
+
+
+/* =========================
+   BOTTOM NAV
+========================= */
+
+.bottom-nav{
+    display:flex;
+    justify-content:center;
+    gap:25px;
+    background:white;
+    padding:15px;
+    margin-top:25px;
+    box-shadow:0 -2px 8px rgba(0,0,0,.08);
+}
+
+.bottom-nav a{
+    color:#087dcc;
+    text-decoration:none;
+    font-weight:bold;
+}
+
+
+/* =========================
+   MOBILE
+========================= */
+
+@media(max-width:600px){
+
+    header h1{
+        font-size:23px;
+    }
+
+    .hero{
+        width:92%;
+    }
+
+    .buttons{
+        flex-direction:column;
+    }
+
+    .approve-btn,
+    .reject-btn{
+        width:100%;
+    }
+
+    .bottom-nav{
+        gap:15px;
+        font-size:14px;
+    }
+
+}
+
+</style>
+
+</head>
+
+
+<body>
+
+
+<!-- =========================
+     HEADER
+========================= -->
+
+<header>
+
+<h1>
+💳 Manage Deposits
+</h1>
+
+<p>
+Money Earn Ethiopia
+</p>
+
+</header>
+
+
+
+<!-- =========================
+     MAIN
+========================= -->
+
+<main class="hero">
+
+
+<div class="card">
+
+
+<h2>
+⏳ Pending Deposits
+</h2>
+
+
+<p style="text-align:center;">
+Review deposit requests before approving them.
+</p>
+
+
+<!--
+    JavaScript will load
+    deposit requests here
+-->
+
+<div id="depositList">
+
+<p style="text-align:center;">
+⏳ Loading deposits...
+</p>
+
+</div>
+
+
+</div>
+
+
+
+<!-- =========================
+     BACK DASHBOARD
+========================= -->
+
+<a
+    href="admin-dashboard.html"
+    class="back-btn"
+>
+
+⬅ Back to Admin Dashboard
+
+</a>
+
+
+</main>
+
+
+
+<!-- =========================
+     BOTTOM NAV
+========================= -->
+
+<div class="bottom-nav">
+
+<a href="admin-dashboard.html">
+🏠 Admin Home
+</a>
+
+<a href="admin-deposits.html">
+💳 Deposits
+</a>
+
+<a href="admin-withdrawals.html">
+💸 Withdrawals
+</a>
+
+</div>
+
+
+
+<!-- =========================
+     JAVASCRIPT
+========================= -->
+
+<script
+    type="module"
+    src="js/admin-deposits.js"
+></script>
+
+
+</body>
+
+</html>
