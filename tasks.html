@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>Daily Tasks - Money Earn Ethiopia</title>
+
+    <link
+        rel="stylesheet"
+        href="css/style.css"
+    >
+
+    <style>
+
+        #taskList {
+            width: 100%;
+        }
+
+        #taskList .task-card {
+            display: block;
+            width: 100%;
+            box-sizing: border-box;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        #taskList .task-title {
+            display: block;
+            font-size: 22px;
+            margin: 0 0 10px 0;
+        }
+
+        #taskList .task-description {
+            display: block;
+            font-size: 16px;
+            margin: 0 0 10px 0;
+        }
+
+        #taskList .task-reward {
+            display: block;
+            font-size: 18px;
+            margin: 10px 0;
+        }
+
+        #taskList .completeBtn {
+            display: block;
+            padding: 12px 20px;
+            margin-top: 15px;
+        }
+
+    </style>
+
+</head>
+
+
+<body>
+
+    <header>
+
+        <h1>📋 Daily Tasks</h1>
+
+    </header>
+
+
+    <div class="hero">
+
+        <div class="card">
+
+            <h2>Available Tasks</h2>
+
+            <div id="taskList">
+                <p>Loading tasks...</p>
+            </div>
+
+        </div>
+
+
+        <br>
+
+
+        <a href="dashboard.html">
+
+            <button type="button">
+                🏠 Back Dashboard
+            </button>
+
+        </a>
+
+    </div>
+
+
+    <div class="bottom-nav">
+
+        <a href="dashboard.html">
+            🏠 Home
+        </a>
+
+        <a href="tasks.html">
+            📋 Tasks
+        </a>
+
+        <a href="wallet.html">
+            👛 Wallet
+        </a>
+
+        <a href="profile.html">
+            👤 Profile
+        </a>
+
+    </div>
+
+
+    <script
+        type="module"
+        src="./js/tasks.js">
+    </script>
+
+</body>
+
+</html>

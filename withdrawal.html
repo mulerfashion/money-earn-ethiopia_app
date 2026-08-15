@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Withdrawal - Money Earn Ethiopia</title>
+
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<header>
+    <h1>💸 Withdrawal</h1>
+</header>
+
+<div class="hero">
+
+    <div class="card">
+
+        <h2>Request Withdrawal</h2>
+
+        <input
+            type="number"
+            id="amount"
+            placeholder="Amount (ETB)"
+            min="1"
+            required>
+
+        <br><br>
+
+        <select id="method" required>
+            <option value="">-- Select Payment Method --</option>
+            <option value="Telebirr">Telebirr</option>
+            <option value="M-PESA Ethiopia">M-PESA Ethiopia</option>
+            <option value="CBE Birr">CBE Birr</option>
+            <option value="Bank Account">Bank Account</option>
+        </select>
+
+        <br><br>
+
+        <input
+            type="text"
+            id="account"
+            placeholder="Phone Number / Account Number"
+            required>
+
+        <br><br>
+
+        <button id="withdrawBtn">
+            Withdraw
+        </button>
+
+        <p id="message"></p>
+
+    </div>
+
+</div>
+
+<script type="module" src="js/withdrawal.js"></script>
+
+</body>
+</html>
