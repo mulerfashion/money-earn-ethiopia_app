@@ -2,23 +2,16 @@ const { onCall, HttpsError } =
   require("firebase-functions/v2/https");
 
 const {
-  initializeApp
-} = require("firebase-admin/app");
+  onRequest
+} = require("firebase-functions/v2/https");
 
-const {
-  getFirestore,
-  FieldValue
-} = require("firebase-admin/firestore");
+const admin =
+  require("firebase-admin");
 
-const {
-  getAuth
-} = require("firebase-admin/auth");
+admin.initializeApp();
 
-
-initializeApp();
-
-const db = getFirestore();
-const adminAuth = getAuth();
+const db =
+  admin.firestore();
 
 
 // ==========================================
@@ -29,76 +22,55 @@ const REFERRAL_BONUS = 20;
 
 
 // ==========================================
-// HELPER
+// REGISTER USER PROFILE
 // ==========================================
 
-function cleanString(value) {
-  return String(value || "").trim();
-}
-
-
-// ==========================================
-// REGISTER USER + REFERRAL
-// ==========================================
-//
-// Client creates Firebase Auth account first.
-// Then this trusted function creates the user
-// document and processes referral bonus.
-//
-// ==========================================
-
-exports.registerUser = onCall(
-  async (request) => {
+exports.createUserProfile =
+  onCall(async (request) => {
 
     if (!request.auth) {
-
       throw new HttpsError(
         "unauthenticated",
         "Please login first."
       );
-
     }
-
 
     const uid =
       request.auth.uid;
 
-
     const name =
-      cleanString(
-        request.data?.name
-      );
-
+      String(
+        request.data?.name || ""
+      ).trim();
 
     const email =
-      cleanString(
-        request.data?.email
-      ).toLowerCase();
-
+      String(
+        request.data?.email ||
+        request.auth.token.email ||
+        ""
+      ).trim().toLowerCase();
 
     const referralCode =
-      cleanString(
-        request.data?.referralCode
-      ).toUpperCase();
+      String(
+        request.data?.referralCode || ""
+      )
+        .trim()
+        .toUpperCase();
 
 
     if (!name) {
-
       throw new HttpsError(
         "invalid-argument",
         "Name is required."
       );
-
     }
 
 
     if (!email) {
-
       throw new HttpsError(
         "invalid-argument",
         "Email is required."
       );
-
     }
 
 
@@ -106,342 +78,319 @@ exports.registerUser = onCall(
       db.collection("users").doc(uid);
 
 
-    try {
+    // ========================================
+    // REFERRAL CODE
+    // ========================================
 
-      const result =
-        await db.runTransaction(
-          async (tx) => {
+    const myReferralCode =
+      uid
+        .substring(0, 8)
+        .toUpperCase();
 
-            // =================================
-            // CHECK NEW USER
-            // =================================
 
-            const existingUser =
-              await tx.get(userRef);
+    // ========================================
+    // FIND INVITER
+    // ========================================
 
+    let inviterId = null;
 
-            if (existingUser.exists) {
 
-              return {
-                alreadyExists: true,
-                referralProcessed: false
-              };
+    if (referralCode) {
 
-            }
+      const snapshot =
+        await db
+          .collection("users")
+          .where(
+            "referralCode",
+            "==",
+            referralCode
+          )
+          .limit(1)
+          .get();
 
 
-            // =================================
-            // DEFAULT USER DATA
-            // =================================
+      if (!snapshot.empty) {
 
-            let inviterId = null;
-            let inviterRef = null;
-            let inviterData = null;
+        const inviterDoc =
+          snapshot.docs[0];
 
+        if (
+          inviterDoc.id !== uid
+        ) {
+          inviterId =
+            inviterDoc.id;
+        }
 
-            // =================================
-            // FIND INVITER
-            // =================================
+      }
 
-            if (referralCode) {
+    }
 
-              const referralSnapshot =
-                await db
-                  .collection("users")
-                  .where(
-                    "referralCode",
-                    "==",
-                    referralCode
-                  )
-                  .limit(1)
-                  .get();
 
+    // ========================================
+    // TRANSACTION
+    // ========================================
 
-              if (
-                !referralSnapshot.empty
-              ) {
+    const result =
+      await db.runTransaction(
+        async (tx) => {
 
-                const inviterDoc =
-                  referralSnapshot.docs[0];
+          const existing =
+            await tx.get(userRef);
 
 
-                if (
-                  inviterDoc.id !== uid
-                ) {
+          // ----------------------------------
+          // ALREADY EXISTS
+          // ----------------------------------
 
-                  inviterId =
-                    inviterDoc.id;
+          if (existing.exists) {
 
-                  inviterRef =
-                    inviterDoc.ref;
+            return {
+              created: false,
+              referralBonus: false
+            };
 
-                  inviterData =
-                    inviterDoc.data();
+          }
 
-                }
 
-              } else {
+          // ----------------------------------
+          // NORMAL REGISTRATION
+          // ----------------------------------
 
-                throw new HttpsError(
-                  "invalid-argument",
-                  "Referral code was not found."
-                );
-
-              }
-
-            }
-
-
-            // =================================
-            // CREATE USER WITHOUT REFERRAL
-            // =================================
-
-            if (!inviterId) {
-
-              tx.set(
-                userRef,
-                {
-                  name: name,
-
-                  email: email,
-
-                  balance: 0,
-
-                  referralCode:
-                    uid
-                      .substring(0, 8)
-                      .toUpperCase(),
-
-                  referredBy: null,
-
-                  role: "user",
-
-                  createdAt:
-                    FieldValue.serverTimestamp()
-                }
-              );
-
-
-              return {
-                alreadyExists: false,
-                referralProcessed: false
-              };
-
-            }
-
-
-            // =================================
-            // INVITER BALANCE
-            // =================================
-
-            const oldBalance =
-              Number(
-                inviterData?.balance ?? 0
-              );
-
-
-            if (
-              !Number.isFinite(oldBalance)
-            ) {
-
-              throw new HttpsError(
-                "failed-precondition",
-                "Inviter balance is invalid."
-              );
-
-            }
-
-
-            const newBalance =
-              oldBalance +
-              REFERRAL_BONUS;
-
-
-            // =================================
-            // UNIQUE REFERRAL TRANSACTION
-            // =================================
-
-            const transactionId =
-              `referral_${uid}`;
-
-
-            const transactionRef =
-              db
-                .collection("transactions")
-                .doc(transactionId);
-
-
-            const existingTransaction =
-              await tx.get(
-                transactionRef
-              );
-
-
-            if (
-              existingTransaction.exists
-            ) {
-
-              throw new HttpsError(
-                "already-exists",
-                "Referral bonus has already been processed."
-              );
-
-            }
-
-
-            // =================================
-            // UPDATE INVITER
-            // =================================
-
-            tx.update(
-              inviterRef,
-              {
-                balance:
-                  newBalance,
-
-                lastReferralBonus:
-                  REFERRAL_BONUS,
-
-                lastReferralAt:
-                  FieldValue.serverTimestamp()
-              }
-            );
-
-
-            // =================================
-            // CREATE NEW USER
-            // =================================
+          if (!inviterId) {
 
             tx.set(
               userRef,
               {
-                name: name,
-
-                email: email,
+                name,
+                email,
 
                 balance: 0,
 
                 referralCode:
-                  uid
-                    .substring(0, 8)
-                    .toUpperCase(),
+                  myReferralCode,
 
                 referredBy:
-                  inviterId,
+                  null,
 
-                role: "user",
-
-                createdAt:
-                  FieldValue.serverTimestamp()
-              }
-            );
-
-
-            // =================================
-            // CREATE TRANSACTION
-            // =================================
-
-            tx.set(
-              transactionRef,
-              {
-                uid:
-                  inviterId,
-
-                userId:
-                  inviterId,
-
-                type:
-                  "referral_bonus",
-
-                title:
-                  "👥 Referral Bonus",
-
-                description:
-                  "Referral bonus for inviting a new user.",
-
-                amount:
-                  REFERRAL_BONUS,
-
-                status:
-                  "Completed",
-
-                referredUserId:
-                  uid,
-
-                referredUserEmail:
-                  email,
-
-                referralCode:
-                  referralCode,
-
-                balanceBefore:
-                  oldBalance,
-
-                balanceAfter:
-                  newBalance,
+                role:
+                  "user",
 
                 createdAt:
-                  FieldValue.serverTimestamp()
+                  admin.firestore.FieldValue.serverTimestamp()
               }
             );
 
 
             return {
-              alreadyExists: false,
-              referralProcessed: true,
-              bonus: REFERRAL_BONUS
+              created: true,
+              referralBonus: false
             };
 
           }
-        );
 
 
-      return {
-        success: true,
-        ...result
-      };
+          // ----------------------------------
+          // INVITER
+          // ----------------------------------
+
+          const inviterRef =
+            db
+              .collection("users")
+              .doc(inviterId);
 
 
-    } catch (error) {
+          const inviterSnap =
+            await tx.get(inviterRef);
 
-      console.error(
-        "REGISTER USER ERROR:",
-        error
+
+          if (
+            !inviterSnap.exists
+          ) {
+
+            throw new HttpsError(
+              "not-found",
+              "Inviter account not found."
+            );
+
+          }
+
+
+          const inviterData =
+            inviterSnap.data();
+
+
+          const oldBalance =
+            Number(
+              inviterData.balance || 0
+            );
+
+
+          if (
+            !Number.isFinite(
+              oldBalance
+            )
+          ) {
+
+            throw new HttpsError(
+              "failed-precondition",
+              "Invalid inviter balance."
+            );
+
+          }
+
+
+          const newBalance =
+            oldBalance +
+            REFERRAL_BONUS;
+
+
+          // ----------------------------------
+          // UNIQUE TRANSACTION
+          // ----------------------------------
+
+          const transactionId =
+            `${uid}_referral_bonus`;
+
+
+          const transactionRef =
+            db
+              .collection("transactions")
+              .doc(transactionId);
+
+
+          const existingTransaction =
+            await tx.get(
+              transactionRef
+            );
+
+
+          if (
+            existingTransaction.exists
+          ) {
+
+            throw new HttpsError(
+              "already-exists",
+              "Referral bonus already processed."
+            );
+
+          }
+
+
+          // ----------------------------------
+          // UPDATE INVITER
+          // ----------------------------------
+
+          tx.update(
+            inviterRef,
+            {
+              balance:
+                newBalance,
+
+              lastReferralBonus:
+                REFERRAL_BONUS,
+
+              lastReferralAt:
+                admin.firestore.FieldValue.serverTimestamp()
+            }
+          );
+
+
+          // ----------------------------------
+          // CREATE NEW USER
+          // ----------------------------------
+
+          tx.set(
+            userRef,
+            {
+              name,
+              email,
+
+              balance: 0,
+
+              referralCode:
+                myReferralCode,
+
+              referredBy:
+                inviterId,
+
+              role:
+                "user",
+
+              createdAt:
+                admin.firestore.FieldValue.serverTimestamp()
+            }
+          );
+
+
+          // ----------------------------------
+          // CREATE TRANSACTION
+          // ----------------------------------
+
+          tx.set(
+            transactionRef,
+            {
+              uid:
+                inviterId,
+
+              userId:
+                inviterId,
+
+              type:
+                "referral_bonus",
+
+              title:
+                "👥 Referral Bonus",
+
+              description:
+                "Referral bonus for inviting a new user.",
+
+              amount:
+                REFERRAL_BONUS,
+
+              status:
+                "Completed",
+
+              referredUserId:
+                uid,
+
+              referredUserEmail:
+                email,
+
+              referralCode:
+                referralCode,
+
+              balanceBefore:
+                oldBalance,
+
+              balanceAfter:
+                newBalance,
+
+              createdAt:
+                admin.firestore.FieldValue.serverTimestamp()
+            }
+          );
+
+
+          return {
+            created: true,
+            referralBonus: true
+          };
+
+        }
       );
 
 
-      if (
-        error instanceof HttpsError
-      ) {
+    return result;
 
-        throw error;
-
-      }
-
-
-      throw new HttpsError(
-        "internal",
-        "Could not create user profile."
-      );
-
-    }
-
-  }
-);
+  });
 
 
 // ==========================================
 // COMPLETE TASK
 // ==========================================
-//
-// IMPORTANT:
-// Reward is read from Firestore.
-// Client cannot choose the reward amount.
-//
-// ==========================================
 
-exports.completeTask = onCall(
-  async (request) => {
+exports.completeTask =
+  onCall(async (request) => {
 
     if (!request.auth) {
 
@@ -458,9 +407,9 @@ exports.completeTask = onCall(
 
 
     const taskId =
-      cleanString(
-        request.data?.taskId
-      );
+      String(
+        request.data?.taskId || ""
+      ).trim();
 
 
     if (!taskId) {
@@ -473,16 +422,16 @@ exports.completeTask = onCall(
     }
 
 
-    const userRef =
-      db
-        .collection("users")
-        .doc(uid);
-
-
     const taskRef =
       db
         .collection("tasks")
         .doc(taskId);
+
+
+    const userRef =
+      db
+        .collection("users")
+        .doc(uid);
 
 
     const completionId =
@@ -495,269 +444,257 @@ exports.completeTask = onCall(
         .doc(completionId);
 
 
+    const transactionId =
+      `${uid}_task_${taskId}`;
+
+
     const transactionRef =
       db
         .collection("transactions")
-        .doc(
-          `task_${uid}_${taskId}`
-        );
+        .doc(transactionId);
 
 
-    try {
+    const result =
+      await db.runTransaction(
+        async (tx) => {
 
-      const result =
-        await db.runTransaction(
-          async (tx) => {
+          // =================================
+          // READ
+          // =================================
 
-            // =================================
-            // READ ALL REQUIRED DOCUMENTS
-            // =================================
-
-            const userSnap =
-              await tx.get(userRef);
+          const taskSnap =
+            await tx.get(taskRef);
 
 
-            const taskSnap =
-              await tx.get(taskRef);
+          if (
+            !taskSnap.exists
+          ) {
 
-
-            const completionSnap =
-              await tx.get(completionRef);
-
-
-            const transactionSnap =
-              await tx.get(transactionRef);
-
-
-            // =================================
-            // CHECK USER
-            // =================================
-
-            if (!userSnap.exists) {
-
-              throw new HttpsError(
-                "not-found",
-                "User profile not found."
-              );
-
-            }
-
-
-            // =================================
-            // CHECK TASK
-            // =================================
-
-            if (!taskSnap.exists) {
-
-              throw new HttpsError(
-                "not-found",
-                "Task not found."
-              );
-
-            }
-
-
-            // =================================
-            // DUPLICATE CHECK
-            // =================================
-
-            if (
-              completionSnap.exists ||
-              transactionSnap.exists
-            ) {
-
-              return {
-                alreadyCompleted: true
-              };
-
-            }
-
-
-            const userData =
-              userSnap.data();
-
-
-            const taskData =
-              taskSnap.data();
-
-
-            // =================================
-            // OFFICIAL REWARD
-            // =================================
-
-            const reward =
-              Number(
-                taskData.reward ?? 0
-              );
-
-
-            if (
-              !Number.isFinite(reward) ||
-              reward <= 0
-            ) {
-
-              throw new HttpsError(
-                "failed-precondition",
-                "Invalid task reward."
-              );
-
-            }
-
-
-            // =================================
-            // OLD BALANCE
-            // =================================
-
-            const oldBalance =
-              Number(
-                userData.balance ?? 0
-              );
-
-
-            if (
-              !Number.isFinite(oldBalance)
-            ) {
-
-              throw new HttpsError(
-                "failed-precondition",
-                "Invalid user balance."
-              );
-
-            }
-
-
-            const newBalance =
-              oldBalance +
-              reward;
-
-
-            // =================================
-            // UPDATE BALANCE
-            // =================================
-
-            tx.update(
-              userRef,
-              {
-                balance:
-                  newBalance,
-
-                lastTaskReward:
-                  reward,
-
-                lastTaskAt:
-                  FieldValue.serverTimestamp()
-              }
+            throw new HttpsError(
+              "not-found",
+              "Task not found."
             );
-
-
-            // =================================
-            // CREATE COMPLETION
-            // =================================
-
-            tx.create(
-              completionRef,
-              {
-                uid:
-                  uid,
-
-                taskId:
-                  taskId,
-
-                reward:
-                  reward,
-
-                status:
-                  "Completed",
-
-                completedAt:
-                  FieldValue.serverTimestamp()
-              }
-            );
-
-
-            // =================================
-            // CREATE TRANSACTION
-            // =================================
-
-            tx.create(
-              transactionRef,
-              {
-                uid:
-                  uid,
-
-                userId:
-                  uid,
-
-                type:
-                  "task_reward",
-
-                title:
-                  "📋 Task Reward",
-
-                description:
-                  taskData.title ||
-                  "Completed task",
-
-                amount:
-                  reward,
-
-                status:
-                  "Completed",
-
-                taskId:
-                  taskId,
-
-                balanceBefore:
-                  oldBalance,
-
-                balanceAfter:
-                  newBalance,
-
-                createdAt:
-                  FieldValue.serverTimestamp()
-              }
-            );
-
-
-            return {
-              alreadyCompleted: false,
-              reward: reward,
-              newBalance: newBalance
-            };
 
           }
-        );
 
 
-      return {
+          const userSnap =
+            await tx.get(userRef);
+
+
+          if (
+            !userSnap.exists
+          ) {
+
+            throw new HttpsError(
+              "not-found",
+              "User account not found."
+            );
+
+          }
+
+
+          const completionSnap =
+            await tx.get(
+              completionRef
+            );
+
+
+          if (
+            completionSnap.exists
+          ) {
+
+            throw new HttpsError(
+              "already-exists",
+              "You already completed this task."
+            );
+
+          }
+
+
+          // =================================
+          // TASK DATA
+          // =================================
+
+          const task =
+            taskSnap.data();
+
+
+          const reward =
+            Number(
+              task.reward || 0
+            );
+
+
+          if (
+            !Number.isFinite(reward) ||
+            reward <= 0
+          ) {
+
+            throw new HttpsError(
+              "failed-precondition",
+              "Invalid task reward."
+            );
+
+          }
+
+
+          // =================================
+          // USER BALANCE
+          // =================================
+
+          const user =
+            userSnap.data();
+
+
+          const oldBalance =
+            Number(
+              user.balance || 0
+            );
+
+
+          if (
+            !Number.isFinite(oldBalance)
+          ) {
+
+            throw new HttpsError(
+              "failed-precondition",
+              "Invalid user balance."
+            );
+
+          }
+
+
+          const newBalance =
+            oldBalance +
+            reward;
+
+
+          // =================================
+          // UPDATE BALANCE
+          // =================================
+
+          tx.update(
+            userRef,
+            {
+              balance:
+                newBalance,
+
+              lastTaskReward:
+                reward,
+
+              lastTaskAt:
+                admin.firestore.FieldValue.serverTimestamp()
+            }
+          );
+
+
+          // =================================
+          // COMPLETION
+          // =================================
+
+          tx.set(
+            completionRef,
+            {
+              uid,
+
+              taskId,
+
+              reward,
+
+              title:
+                String(
+                  task.title || "Task"
+                ),
+
+              status:
+                "Completed",
+
+              createdAt:
+                admin.firestore.FieldValue.serverTimestamp()
+            }
+          );
+
+
+          // =================================
+          // TRANSACTION
+          // =================================
+
+          tx.set(
+            transactionRef,
+            {
+              uid,
+
+              userId:
+                uid,
+
+              type:
+                "task_reward",
+
+              title:
+                "📌 Task Reward",
+
+              description:
+                String(
+                  task.title ||
+                  "Completed task"
+                ),
+
+              amount:
+                reward,
+
+              status:
+                "Completed",
+
+              taskId,
+
+              balanceBefore:
+                oldBalance,
+
+              balanceAfter:
+                newBalance,
+
+              createdAt:
+                admin.firestore.FieldValue.serverTimestamp()
+            }
+          );
+
+
+          return {
+            reward,
+            newBalance
+          };
+
+        }
+      );
+
+
+    return {
+      success: true,
+
+      reward:
+        result.reward,
+
+      balance:
+        result.newBalance
+    };
+
+  });
+
+
+// ==========================================
+// HEALTH CHECK
+// ==========================================
+
+exports.health =
+  onRequest(
+    (req, res) => {
+
+      res.status(200).json({
         success: true,
-        ...result
-      };
-
-
-    } catch (error) {
-
-      console.error(
-        "COMPLETE TASK ERROR:",
-        error
-      );
-
-
-      if (
-        error instanceof HttpsError
-      ) {
-
-        throw error;
-
-      }
-
-
-      throw new HttpsError(
-        "internal",
-        "Could not complete task."
-      );
+        message:
+          "Money Earn Ethiopia Functions are running."
+      });
 
     }
-
-  }
-);
+  );
