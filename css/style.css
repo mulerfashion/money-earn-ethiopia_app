@@ -1,1 +1,267 @@
+*{
+  box-sizing:border-box;
+  font-family:Arial, sans-serif;
+}
 
+
+body{
+
+  margin:0;
+  background:#f5f5f5;
+  color:#222;
+
+}
+
+
+
+/* HEADER */
+
+.app-header{
+
+  background:linear-gradient(
+    135deg,
+    #00843d,
+    #f2b705
+  );
+
+  color:white;
+
+  text-align:center;
+
+  padding:25px 15px;
+
+  border-radius:0 0 30px 30px;
+
+}
+
+
+.logo{
+
+  width:120px;
+
+  height:120px;
+
+  object-fit:contain;
+
+  background:white;
+
+  border-radius:50%;
+
+}
+
+
+
+.app-header h1{
+
+  margin:10px 0 5px;
+
+  font-size:24px;
+
+}
+
+
+.app-header p{
+
+  margin:0;
+
+}
+
+
+
+
+
+/* LOGIN REGISTER MENU */
+
+.menu{
+
+  display:flex;
+
+  justify-content:center;
+
+  gap:20px;
+
+  padding:15px;
+
+}
+
+
+.menu a{
+
+  text-decoration:none;
+
+  background:#00843d;
+
+  color:white;
+
+  padding:12px 25px;
+
+  border-radius:25px;
+
+}
+
+
+
+
+
+/* HERO */
+
+
+.hero{
+
+  background:white;
+
+  margin:15px;
+
+  padding:25px;
+
+  text-align:center;
+
+  border-radius:20px;
+
+}
+
+
+
+.hero button{
+
+  background:#f2b705;
+
+  border:none;
+
+  padding:15px 40px;
+
+  border-radius:30px;
+
+  font-size:18px;
+
+  color:white;
+
+}
+
+
+
+
+
+/* FEATURE MENU */
+
+
+.features{
+
+ display:grid;
+
+ grid-template-columns:repeat(4,1fr);
+
+ gap:10px;
+
+ padding:15px;
+
+}
+
+
+
+.box{
+
+ background:#fff7d6;
+
+ text-align:center;
+
+ padding:15px 5px;
+
+ border-radius:15px;
+
+}
+
+
+
+.box h3{
+
+ font-size:30px;
+
+ margin:0;
+
+}
+
+
+
+
+/* SMALL CARDS */
+
+
+.cards{
+
+ display:grid;
+
+ grid-template-columns:repeat(2,1fr);
+
+ gap:15px;
+
+ padding:15px;
+
+}
+
+
+
+.cards div{
+
+ background:white;
+
+ height:90px;
+
+ border-radius:15px;
+
+ display:flex;
+
+ justify-content:center;
+
+ align-items:center;
+
+ font-weight:bold;
+
+ box-shadow:0 3px 8px #ddd;
+
+}
+
+
+
+
+/* FOOTER */
+
+
+footer{
+
+ text-align:center;
+
+ padding:20px;
+
+ color:#777;
+
+}
+
+
+
+
+
+@media(max-width:600px){
+
+.features{
+
+grid-template-columns:repeat(4,1fr);
+
+}
+
+
+.box{
+
+font-size:12px;
+
+}
+
+
+
+.cards{
+
+grid-template-columns:repeat(2,1fr);
+
+}
+
+}
